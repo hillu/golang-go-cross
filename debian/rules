@@ -1,0 +1,49 @@
+#!/usr/bin/make -f
+
+#export DH_VERBOSE = 1
+
+GOLANG_DEBIAN_VERSION := $(shell dpkg-query -f '$${Version}' -W golang-go)
+GOLANG_UPSTREAM_VERSION := $(firstword $(subst -, ,$(GOLANG_DEBIAN_VERSION)))
+
+PKGVERSION:=$(shell dpkg-parsechangelog | awk '/^Version:/ {print $$2}')
+
+GO_ROOT := $(shell go env GOROOT)
+INSTALL_GO_ROOT := debian/golang-go-cross/$(GO_ROOT)
+
+GO_HOST_OSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
+
+GO_OSARCHS += $(foreach arch,386 amd64 arm arm64 ppc64le,linux_$(arch) )
+GO_OSARCHS += $(foreach arch,386 amd64,windows_$(arch) )
+
+# TODO: ppc64 arm arm64 mips64
+
+define newline
+
+
+endef
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	ln -s /usr/lib/go/VERSION .
+	cp -rs /usr/lib/go/src/. src
+	rm -f src/cmd/internal/obj/zbootstrap.go src/cmd/cgo/zdefaultcc.go
+
+override_dh_auto_build:
+	$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
+		./build.sh $(subst _, ,$(osarch))$(newline))
+
+override_dh_auto_install:
+	mkdir -p $(INSTALL_GO_ROOT)/pkg
+	$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
+		cp -r pkg/$(osarch) $(INSTALL_GO_ROOT)/pkg$(newline))
+
+override_dh_auto_clean:
+	rm -rf src test pkg bin VERSION
+
+override_dh_gencontrol:
+	dh_gencontrol -pgolang-go-cross -- \
+		-v$(GOLANG_UPSTREAM_VERSION)-$(PKGVERSION) \
+		-Vgolang:Version=$(GOLANG_DEBIAN_VERSION) \
+		-Vgolang:UpstreamVersion=$(GOLANG_UPSTREAM_VERSION)
