@@ -4,12 +4,13 @@ set -e
 
 export GOOS=$1
 export GOARCH=$2
+GOROOT=$3
 
 export CGO_ENABLED=1
-GOROOT_BOOTSTRAP=$(go env GOROOT); export GOROOT_BOOTSTRAP
-GOROOT_FINAL=$(go env GOROOT); export GOROOT_FINAL
+GOROOT_BOOTSTRAP=$($GOROOT/bin/go env GOROOT); export GOROOT_BOOTSTRAP
+GOROOT_FINAL=$($GOROOT/bin/go env GOROOT); export GOROOT_FINAL
 
-GOHOSTARCH=$(go env GOHOSTARCH)
+GOHOSTARCH=$($GOROOT/bin/go env GOHOSTARCH)
 
 export GO386=387 # see golang/debian/helpers/goenv.sh
 export GOARM=6

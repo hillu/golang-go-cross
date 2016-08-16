@@ -2,49 +2,64 @@
 
 #export DH_VERBOSE = 1
 
-GOLANG_DEBIAN_VERSION := $(shell dpkg-query -f '$${Version}' -W golang-go)
+GOLANG_DEBIAN_VERSION := $(shell dpkg-query -f '$${Version}' -W golang-1.6-go)
 GOLANG_UPSTREAM_VERSION := $(firstword $(subst -, ,$(GOLANG_DEBIAN_VERSION)))
 
 PKGVERSION:=$(shell dpkg-parsechangelog | awk '/^Version:/ {print $$2}')
 
-GO_ROOT := $(shell go env GOROOT)
-INSTALL_GO_ROOT := debian/golang-go-cross/$(GO_ROOT)
+GO_ROOT := /usr/lib/go-1.6
+INSTALL_GO_ROOT := debian/golang-1.6-go-cross/$(GO_ROOT)
 
-GO_HOST_OSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
+GO_HOST_OSARCH := $(shell $(GO_ROOT)/bin/go env GOHOSTOS)_$(shell $(GO_ROOT)/bin/go env GOHOSTARCH)
 
-GO_OSARCHS += $(foreach arch,386 amd64 arm arm64 ppc64le,linux_$(arch) )
-GO_OSARCHS += $(foreach arch,386 amd64,windows_$(arch) )
+GO_OSARCHS := $(filter-out $(GO_HOST_OSARCH),$(foreach arch,386 amd64,linux_$(arch)))
+GO_OSARCHS += $(foreach arch,386 amd64,windows_$(arch))
+EXTRA_COMPILERS = mingw-w64
 
-# TODO: ppc64 arm arm64 mips64
+GO_OSARCHS += $(if $(shell which aarch64-linux-gnu-gcc),linux_arm64)
+EXTRA_COMPILERS += $(if $(shell which aarch64-linux-gnu-gcc),aarch64-linux-gnu)
+GO_OSARCHS += $(if $(shell which powerpc64le-linux-gnu-gcc),linux_ppc64le)
+EXTRA_COMPILERS += $(if $(shell which powerpc64le-linux-gnu-gcc),powerpc64le-linux-gnu)
+GO_OSARCHS += $(if $(shell which arm-linux-gnueabihf-gcc),linux_arm)
+EXTRA_COMPILERS += $(if $(shell which arm-linux-gnueabihf-gcc),arm-linux-gnueabihf)
+GO_OSARCHS += $(if $(shell which mips64el-linux-gnuabi64-gcc),linux_mips64le)
+EXTRA_COMPILERS += $(if $(shell which mips64el-linux-gnuabi64-gcc),mips64el-linux-gnuabi64)
 
+# TODO: ppc64 arm mips64
+
+# Some MAKE workarounds
 define newline
 
 
 endef
+comma := ,
+space := $(subst :,,: :)
 
 %:
 	dh $@
 
 override_dh_auto_configure:
-	ln -s /usr/lib/go/VERSION .
-	cp -rs /usr/lib/go/src/. src
+	ln -s $(GO_ROOT)/VERSION .
+	cp -rs $(GO_ROOT)/src/. src
 	rm -f src/cmd/internal/obj/zbootstrap.go src/cmd/cgo/zdefaultcc.go
 
 override_dh_auto_build:
-	$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
-		./build.sh $(subst _, ,$(osarch))$(newline))
+	$(foreach osarch,$(GO_OSARCHS),\
+		./build.sh $(subst _, ,$(osarch)) $(GO_ROOT)$(newline))
 
 override_dh_auto_install:
 	mkdir -p $(INSTALL_GO_ROOT)/pkg
 	$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
 		cp -r pkg/$(osarch) $(INSTALL_GO_ROOT)/pkg$(newline))
-	find $(INSTALL_GO_ROOT) -exec touch -r /usr/lib/go/pkg {} \;
+	find $(INSTALL_GO_ROOT) -exec touch -r $(GO_ROOT)/pkg {} \;
 
 override_dh_auto_clean:
 	rm -rf src test pkg bin VERSION
 
 override_dh_gencontrol:
-	dh_gencontrol -pgolang-go-cross -- \
+	dh_gencontrol -pgolang-1.6-go-cross -- \
 		-v$(GOLANG_UPSTREAM_VERSION)-$(PKGVERSION) \
 		-Vgolang:Version=$(GOLANG_DEBIAN_VERSION) \
-		-Vgolang:UpstreamVersion=$(GOLANG_UPSTREAM_VERSION)
+		-Vgolang:UpstreamVersion=$(GOLANG_UPSTREAM_VERSION) \
+		-Vgolang:Architectures="$(subst $(space),$(comma) ,$(strip $(GO_OSARCHS)))" \
+		-Vmisc:Recommended-Compilers="$(patsubst %,%$(comma),$(patsubst %,gcc-%,$(EXTRA_COMPILERS)) $(patsubst %,g++-%,$(EXTRA_COMPILERS)))"

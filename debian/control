@@ -3,25 +3,26 @@ Section: devel
 Priority: optional
 Maintainer: Hilko Bengen <bengen@debian.org>
 Build-Depends: debhelper (>=9),
- golang-go, golang-src,
+ golang-1.6-go, golang-1.6-src,
  gcc-mingw-w64, g++-mingw-w64,
- gcc-5-multilib, g++-5-multilib,
- gcc-aarch64-linux-gnu, g++-aarch64-linux-gnu,
- gcc-arm-linux-gnueabihf, g++-arm-linux-gnueabihf,
- gcc-powerpc64le-linux-gnu, g++-powerpc64le-linux-gnu,
+ gcc-6-multilib | gcc-multilib,
+ g++-6-multilib | g++-multilib,
+ gcc-aarch64-linux-gnu | base-files (<< 9), g++-aarch64-linux-gnu | base-files (<< 9),
+ gcc-arm-linux-gnueabihf | base-files (<< 9), g++-arm-linux-gnueabihf | base-files (<< 9),
+ gcc-powerpc64le-linux-gnu | base-files (<< 9), g++-powerpc64le-linux-gnu | base-files (<< 9),
+# gcc-mips64el-linux-gnuabi64 | base-files (<< 9), g++-mips64el-linux-gnuabi64 | base-files (<< 9),
 Standards-Version: 3.9.7
 
-Package: golang-go-cross
+Package: golang-1.6-go-cross
 Architecture: amd64 i386
 Depends: ${shlibs:Depends}, ${misc:Depends},
- golang-go (>> ${golang:UpstreamVersion}), golang-go (<< ${golang:UpstreamVersion}.1),
+ golang-1.6-go (>> ${golang:UpstreamVersion}), golang-1.6-go (<< ${golang:UpstreamVersion}.1),
 Recommends:
- gcc-mingw-w64, g++-mingw-w64,
- gcc-5-multilib, g++-5-multilib,
- gcc-aarch64-linux-gnu, g++-aarch64-linux-gnu,
- gcc-arm-linux-gnueabihf, g++-arm-linux-gnueabihf,
- gcc-powerpc64le-linux-gnu, g++-powerpc64le-linux-gnu,
+ gcc-6-multilib | gcc-multilib,
+ g++-6-multilib | g++-multilib,
+ ${misc:Recommended-Compilers},
 Built-Using: golang (= ${golang:Version})
-Description: Go programming language cross-compiled stdlib
+Description: Go programming language, cross-compiled stdlib
  This package contains the Go standard library, cross-compiled for
- Windows and non-native Linux platforms.
+ Windows and non-native Linux platforms, i.e.:
+ ${golang:Architectures}
