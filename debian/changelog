@@ -1,3 +1,10 @@
+golang-go-cross (2) unstable; urgency=medium
+
+  * Set timestamps equal to installed GOROOT
+  * Support co-installable golang versions, build for 1.6.
+
+ -- Hilko Bengen <bengen@debian.org>  Tue, 16 Aug 2016 21:08:02 +0200
+
 golang-go-cross (1) unstable; urgency=medium
 
   * Initial release
