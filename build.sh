@@ -2,9 +2,10 @@
 
 set -e
 
-export GOOS=$1
-export GOARCH=$2
-GOROOT=$3
+builddir=$1
+export GOOS=$2
+export GOARCH=$3
+GOROOT=$4
 
 export CGO_ENABLED=1
 GOROOT_BOOTSTRAP=$($GOROOT/bin/go env GOROOT); export GOROOT_BOOTSTRAP
@@ -14,6 +15,11 @@ GOHOSTARCH=$($GOROOT/bin/go env GOHOSTARCH)
 
 export GO386=387 # see golang/debian/helpers/goenv.sh
 export GOARM=6
+
+if [ ! -e $builddir/src/runtime/cgo/gcc_${GOOS}_${GOARCH}.c ]; then
+    echo "gcc_${GOOS}_${GOARCH}.c not found" >&2
+    exit 1
+fi
 
 case "$GOOS-$GOARCH" in
     linux-amd64)
@@ -47,4 +53,4 @@ esac
 export CC_FOR_TARGET="${prefix}gcc $cflags"
 export CXX_FOR_TARGET="${prefix}g++ $cflags"
 
-( cd src; ./make.bash )
+( cd $builddir/src; ./make.bash )

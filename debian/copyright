@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: https://github.com/hillu/golang-go-cross
 
 Files: *
-Copyright: 2016 Hilko Bengen <bengen@debian.org>
+Copyright: 2016, 2017 Hilko Bengen <bengen@debian.org>
 License: Go
 
 License: Go

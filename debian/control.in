@@ -1,0 +1,11 @@
+Source: golang-go-cross
+Section: devel
+Priority: optional
+Maintainer: Hilko Bengen <bengen@debian.org>
+Build-Depends: debhelper (>=9),
+ #GOLANG_BUILD_DEPENDS#
+ #EXTRA_COMPILERS#
+ gcc-6-multilib | gcc-multilib,
+ g++-6-multilib | g++-multilib,
+Standards-Version: 3.9.8
+

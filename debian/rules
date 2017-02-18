@@ -1,31 +1,24 @@
 #!/usr/bin/make -f
 
-#export DH_VERBOSE = 1
+export DH_VERBOSE = 3
 
-GOLANG_DEBIAN_VERSION := $(shell dpkg-query -f '$${Version}' -W golang-1.6-go)
-GOLANG_UPSTREAM_VERSION := $(firstword $(subst -, ,$(GOLANG_DEBIAN_VERSION)))
+# GOLANG_VERSIONS and EXTRA_ARCHS can be overridden when generating debian/control
+GOLANG_VERSIONS = $(patsubst go-%,%,$(notdir $(wildcard /usr/lib/go-*)))
+EXTRA_ARCHS = mingw-w64 \
+	$(foreach arch, aarch64-linux-gnu powerpc64le-linux-gnu arm-linux-gnueabihf mips64el-linux-gnuabi64,\
+		$(if $(shell which $(arch)-gcc),$(arch)))
 
 PKGVERSION:=$(shell dpkg-parsechangelog | awk '/^Version:/ {print $$2}')
 
-GO_ROOT := /usr/lib/go-1.6
-INSTALL_GO_ROOT := debian/golang-1.6-go-cross/$(GO_ROOT)
+GO_HOST_OSARCH := $(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 
-GO_HOST_OSARCH := $(shell $(GO_ROOT)/bin/go env GOHOSTOS)_$(shell $(GO_ROOT)/bin/go env GOHOSTARCH)
-
-GO_OSARCHS := $(filter-out $(GO_HOST_OSARCH),$(foreach arch,386 amd64,linux_$(arch)))
+GO_OSARCHS = $(filter-out $(GO_HOST_OSARCH),$(foreach arch,386 amd64,linux_$(arch)))
 GO_OSARCHS += $(foreach arch,386 amd64,windows_$(arch))
-EXTRA_COMPILERS = mingw-w64
 
-GO_OSARCHS += $(if $(shell which aarch64-linux-gnu-gcc),linux_arm64)
-EXTRA_COMPILERS += $(if $(shell which aarch64-linux-gnu-gcc),aarch64-linux-gnu)
-GO_OSARCHS += $(if $(shell which powerpc64le-linux-gnu-gcc),linux_ppc64le)
-EXTRA_COMPILERS += $(if $(shell which powerpc64le-linux-gnu-gcc),powerpc64le-linux-gnu)
-GO_OSARCHS += $(if $(shell which arm-linux-gnueabihf-gcc),linux_arm)
-EXTRA_COMPILERS += $(if $(shell which arm-linux-gnueabihf-gcc),arm-linux-gnueabihf)
-GO_OSARCHS += $(if $(shell which mips64el-linux-gnuabi64-gcc),linux_mips64le)
-EXTRA_COMPILERS += $(if $(shell which mips64el-linux-gnuabi64-gcc),mips64el-linux-gnuabi64)
-
-# TODO: ppc64 arm mips64
+GO_OSARCHS += $(if $(find aarch64-linux-gnu-gcc,$(EXTRA_ARCHS)),linux_arm64)
+GO_OSARCHS += $(if $(find powerpc64le-linux-gnu-gcc,$(EXTRA_ARCHS)),linux_ppc64le)
+GO_OSARCHS += $(if $(find arm-linux-gnueabihf-gcc,$(EXTRA_ARCHS)),linux_arm)
+GO_OSARCHS += $(if $(find mips64el-linux-gnuabi64-gcc,$(EXTRA_ARCHS)),linux_mips64le)
 
 # Some MAKE workarounds
 define newline
@@ -35,31 +28,48 @@ endef
 comma := ,
 space := $(subst :,,: :)
 
+debian/control: debian/control.in debian/control.pkg.in
+	sed -e 's/#GOLANG_BUILD_DEPENDS#/$(foreach v,$(GOLANG_VERSIONS),golang-$(v)-go$(comma) golang-$(v)-src$(comma))/g' \
+		-e 's/#EXTRA_COMPILERS#/$(foreach a,$(EXTRA_ARCHS),gcc-$(a)$(comma) g++-$(a)$(comma))/g' \
+		< debian/control.in > $@.t
+	$(foreach v,$(GOLANG_VERSIONS),\
+		sed -e 's,#GOLANG_VERSION#,$(v),g' < debian/control.pkg.in >> $@.t$(newline))
+	mv $@.t $@
+
 %:
 	dh $@
 
 override_dh_auto_configure:
-	ln -s $(GO_ROOT)/VERSION .
-	cp -rs $(GO_ROOT)/src/. src
-	rm -f src/cmd/internal/obj/zbootstrap.go src/cmd/cgo/zdefaultcc.go
+	$(foreach v,$(GOLANG_VERSIONS),\
+		mkdir -p build/$(v)/src$(newline)\
+		ln -s /usr/lib/go-$(v)/VERSION build/$(v)$(newline)\
+		cp -rs /usr/lib/go-$(v)/src/. build/$(v)/src$(newline)\
+		rm -f build/$(v)/src/cmd/internal/obj/zbootstrap.go build/$(v)/src/cmd/cgo/zdefaultcc.go$(newline))
 
 override_dh_auto_build:
-	$(foreach osarch,$(GO_OSARCHS),\
-		./build.sh $(subst _, ,$(osarch)) $(GO_ROOT)$(newline))
+	$(foreach v,$(GOLANG_VERSIONS),\
+		$(foreach osarch,$(GO_OSARCHS),\
+			./build.sh build/$(v) $(subst _, ,$(osarch)) /usr/lib/go-$(v)$(newline)))
 
 override_dh_auto_install:
-	mkdir -p $(INSTALL_GO_ROOT)/pkg
-	$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
-		cp -r pkg/$(osarch) $(INSTALL_GO_ROOT)/pkg$(newline))
-	find $(INSTALL_GO_ROOT) -exec touch -r $(GO_ROOT)/pkg {} \;
+	$(foreach v,$(GOLANG_VERSIONS),\
+		mkdir -p debian/golang-$(v)-go-cross/usr/lib/go-$(v)$(newline))
+	$(foreach v,$(GOLANG_VERSIONS),\
+		$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
+			cp -r build/$(v)/pkg/$(osarch) debian/golang-$(v)-go-cross/usr/lib/go-$(v)$(newline)\
+			find debian/golang-$(v)-go-cross/usr/lib/go-$(v) -exec touch -r /usr/lib/go-$(v)/pkg {} \;$(newline)))
 
 override_dh_auto_clean:
-	rm -rf src test pkg bin VERSION
+	rm -rf build
 
 override_dh_gencontrol:
-	dh_gencontrol -pgolang-1.6-go-cross -- \
-		-v$(GOLANG_UPSTREAM_VERSION)-$(PKGVERSION) \
-		-Vgolang:Version=$(GOLANG_DEBIAN_VERSION) \
-		-Vgolang:UpstreamVersion=$(GOLANG_UPSTREAM_VERSION) \
-		-Vgolang:Architectures="$(subst $(space),$(comma) ,$(strip $(GO_OSARCHS)))" \
-		-Vmisc:Recommended-Compilers="$(patsubst %,%$(comma),$(patsubst %,gcc-%,$(EXTRA_COMPILERS)) $(patsubst %,g++-%,$(EXTRA_COMPILERS)))"
+	$(foreach v,$(GOLANG_VERSIONS),\
+		( \
+			dpkg-query -f 'golang:Version=$${Version}\n' -W golang-$(v)-go; \
+			dpkg-query -f 'golang:UpstreamVersion=$${source:Upstream-Version}\n' -W golang-$(v)-go; \
+			echo 'golang:Architectures=$(subst $(space),$(comma) ,$(strip $(GO_OSARCHS)))'; \
+			echo 'misc:Recommended-Compilers=$(patsubst %,%$(comma),$(patsubst %,gcc-%,$(EXTRA_ARCHS)) $(patsubst %,g++-%,$(EXTRA_ARCHS)))' \
+		) >> debian/golang-$(v)-go-cross.substvars$(newline))
+	$(foreach v,$(GOLANG_VERSIONS),\
+		dh_gencontrol -pgolang-$(v)-go-cross -- \
+			-v$(shell dpkg-query -f '$${Version}' -W golang-$(v)-go)-$(PKGVERSION)$(newline))

@@ -1,3 +1,10 @@
+golang-go-cross (3) unstable; urgency=medium
+
+  * Generate debian/control from a template
+  * Support building packages for multiple Golang versions
+
+ -- Hilko Bengen <bengen@debian.org>  Sat, 18 Feb 2017 18:31:39 +0100
+
 golang-go-cross (2) unstable; urgency=medium
 
   * Set timestamps equal to installed GOROOT
