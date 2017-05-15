@@ -1,3 +1,9 @@
+golang-go-cross (4) unstable; urgency=medium
+
+  * Fix install paths
+
+ -- Hilko Bengen <bengen@debian.org>  Mon, 15 May 2017 19:12:54 +0200
+
 golang-go-cross (3) unstable; urgency=medium
 
   * Generate debian/control from a template
