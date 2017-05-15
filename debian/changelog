@@ -1,3 +1,9 @@
+golang-go-cross (5) unstable; urgency=medium
+
+  * Add golang-go build dependency
+
+ -- Hilko Bengen <bengen@debian.org>  Mon, 15 May 2017 19:53:23 +0200
+
 golang-go-cross (4) unstable; urgency=medium
 
   * Fix install paths
