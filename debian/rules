@@ -53,10 +53,10 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	$(foreach v,$(GOLANG_VERSIONS),\
-		mkdir -p debian/golang-$(v)-go-cross/usr/lib/go-$(v)$(newline))
+		mkdir -p debian/golang-$(v)-go-cross/usr/lib/go-$(v)/pkg/$(newline))
 	$(foreach v,$(GOLANG_VERSIONS),\
 		$(foreach osarch,$(filter-out $(GO_HOST_OSARCH),$(GO_OSARCHS)),\
-			cp -r build/$(v)/pkg/$(osarch) debian/golang-$(v)-go-cross/usr/lib/go-$(v)$(newline)\
+			cp -r build/$(v)/pkg/$(osarch) debian/golang-$(v)-go-cross/usr/lib/go-$(v)/pkg/$(newline)\
 			find debian/golang-$(v)-go-cross/usr/lib/go-$(v) -exec touch -r /usr/lib/go-$(v)/pkg {} \;$(newline)))
 
 override_dh_auto_clean:
