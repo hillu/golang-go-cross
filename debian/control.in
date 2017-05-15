@@ -3,6 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Hilko Bengen <bengen@debian.org>
 Build-Depends: debhelper (>=9),
+ golang-go,
  #GOLANG_BUILD_DEPENDS#
  #EXTRA_COMPILERS#
  gcc-6-multilib | gcc-multilib,

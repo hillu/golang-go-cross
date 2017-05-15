@@ -3,6 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Hilko Bengen <bengen@debian.org>
 Build-Depends: debhelper (>=9),
+ golang-go,
  golang-1.7-go, golang-1.7-src, golang-1.8-go, golang-1.8-src,
  gcc-mingw-w64, g++-mingw-w64,
  gcc-6-multilib | gcc-multilib,
